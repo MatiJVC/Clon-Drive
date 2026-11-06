@@ -1,0 +1,14 @@
+# Datos generados por LocalStack
+localstack_data/
+
+# Binarios y estado de Terraform
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/*.tfstate
+terraform/*.tfstate.*
+
+# Variables de entorno y dependencias (futuro)
+.env
+node_modules/
+dist/
+build/
