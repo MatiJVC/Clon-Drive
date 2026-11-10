@@ -1,6 +1,8 @@
-import { LogOut, Search, UserRound } from 'lucide-react'
-import { useState } from 'react'
+import { LogOut, Menu, Search, SlidersHorizontal, UserRound } from 'lucide-react'
+import { useMemo, useRef, useState } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
+import { DriveLogo } from '@/components/layout/drive-logo'
+import { NewFolderActionContext, type NewFolderActionContextValue } from '@/components/layout/new-folder-action-value'
 import { Sidebar } from '@/components/layout/sidebar'
 import { ThemeToggle } from '@/components/layout/theme-toggle'
 import { Button } from '@/components/ui/button'
@@ -10,6 +12,17 @@ export function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const navigate = useNavigate()
   const { user, logout } = useAuth()
+  const newFolderAction = useRef<(() => void) | null>(null)
+  const layoutActions = useMemo<NewFolderActionContextValue>(() => ({
+    register(action) {
+      newFolderAction.current = action
+      return () => { if (newFolderAction.current === action) newFolderAction.current = null }
+    },
+    request() {
+      if (newFolderAction.current) newFolderAction.current()
+      else navigate('/drive?newFolder=1')
+    },
+  }), [navigate])
 
   async function handleLogout() {
     await logout()
@@ -17,30 +30,42 @@ export function AppShell() {
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar open={sidebarOpen} onOpenChange={setSidebarOpen} />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 items-center gap-4 border-b bg-background/95 px-4 pl-16 backdrop-blur md:px-6">
-          <div className="relative max-w-2xl flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <input className="h-10 w-full rounded-lg border bg-secondary/60 pl-10 pr-4 text-sm outline-none focus:ring-2 focus:ring-ring" placeholder="Buscar en Drive (próxima fase)" disabled aria-label="Buscar" />
+    <NewFolderActionContext.Provider value={layoutActions}>
+      <div className="flex h-screen min-h-[32rem] flex-col overflow-hidden bg-background">
+        <header className="relative z-30 flex h-16 shrink-0 items-center gap-3 px-3 md:gap-5 md:px-4">
+          <div className="flex w-auto shrink-0 items-center gap-2 md:w-[216px]">
+            <Button className="md:hidden" variant="ghost" size="icon" onClick={() => setSidebarOpen(true)} aria-label="Abrir navegación"><Menu className="size-5" /></Button>
+            <DriveLogo className="size-9" />
+            <span className="hidden text-[22px] font-normal text-[#444746] dark:text-foreground sm:block">Drive</span>
           </div>
-          <ThemeToggle />
-          <details className="group relative">
-            <summary className="flex size-10 cursor-pointer list-none items-center justify-center rounded-full bg-accent text-sm font-semibold text-accent-foreground outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring" aria-label="Menú de usuario">
-              {user?.username.slice(0, 2).toUpperCase() || <UserRound className="size-5" />}
-            </summary>
-            <div className="absolute right-0 top-12 z-30 w-56 rounded-xl border bg-card p-2 shadow-lg">
-              <div className="border-b px-3 py-2">
-                <p className="text-xs text-muted-foreground">Sesión iniciada como</p>
-                <p className="truncate text-sm font-medium">{user?.username}</p>
-              </div>
-              <Button className="mt-2 w-full justify-start" variant="ghost" onClick={() => void handleLogout()}><LogOut className="size-4" />Cerrar sesión</Button>
+          <div className="flex min-w-0 flex-1 justify-center">
+            <div className="flex h-12 w-full max-w-[720px] items-center rounded-full bg-[var(--drive-search)] px-4 text-[#444746] shadow-sm dark:text-muted-foreground" role="search" aria-label="Buscar en Drive (no disponible)" aria-disabled="true" title="La búsqueda estará disponible en una fase posterior">
+              <Search className="size-5 shrink-0" />
+              <span className="ml-3 flex-1 truncate text-base">Buscar en Drive</span>
+              <SlidersHorizontal className="size-5 shrink-0" aria-hidden="true" />
             </div>
-          </details>
+          </div>
+          <div className="flex shrink-0 items-center gap-1 md:gap-2">
+            <ThemeToggle />
+            <details className="group relative">
+              <summary className="flex size-10 cursor-pointer list-none items-center justify-center rounded-full bg-[#0b57d0] text-sm font-medium text-white outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring" aria-label="Menú de usuario">
+                {user?.username.slice(0, 2).toUpperCase() || <UserRound className="size-5" />}
+              </summary>
+              <div className="absolute right-0 top-12 z-40 w-64 rounded-2xl border bg-card p-2 shadow-xl">
+                <div className="px-3 py-3">
+                  <p className="text-xs text-muted-foreground">Sesión iniciada como</p>
+                  <p className="mt-1 truncate text-sm font-medium">{user?.username}</p>
+                </div>
+                <div className="border-t pt-1"><Button className="w-full justify-start rounded-full" variant="ghost" onClick={() => void handleLogout()}><LogOut className="size-4" />Cerrar sesión</Button></div>
+              </div>
+            </details>
+          </div>
         </header>
-        <main className="flex-1 overflow-auto p-4 md:p-8"><Outlet /></main>
+        <div className="flex min-h-0 flex-1 gap-2 px-2 pb-2 md:gap-3 md:pl-0 md:pr-2">
+          <Sidebar open={sidebarOpen} onOpenChange={setSidebarOpen} onNewFolder={layoutActions.request} />
+          <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden rounded-2xl bg-[var(--drive-surface)] p-4 shadow-[0_1px_2px_rgba(60,64,67,0.08)] md:p-5 lg:p-6"><Outlet /></main>
+        </div>
       </div>
-    </div>
+    </NewFolderActionContext.Provider>
   )
 }

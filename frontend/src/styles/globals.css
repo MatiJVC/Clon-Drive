@@ -3,45 +3,51 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: Roboto, Arial, sans-serif;
   color-scheme: light;
-  --background: oklch(0.985 0.003 247.86);
-  --foreground: oklch(0.21 0.034 264.67);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.21 0.034 264.67);
-  --primary: oklch(0.55 0.19 258.3);
-  --primary-foreground: oklch(0.985 0.003 247.86);
-  --secondary: oklch(0.96 0.007 247.9);
-  --secondary-foreground: oklch(0.28 0.037 260.03);
-  --muted: oklch(0.96 0.007 247.9);
-  --muted-foreground: oklch(0.55 0.025 264.36);
-  --accent: oklch(0.94 0.025 255.59);
-  --accent-foreground: oklch(0.35 0.13 258.3);
-  --destructive: oklch(0.58 0.22 27.33);
-  --border: oklch(0.9 0.012 264.5);
-  --input: oklch(0.9 0.012 264.5);
-  --ring: oklch(0.62 0.17 255.4);
-  --radius: 0.75rem;
+  --background: #f8fafd;
+  --foreground: #1f1f1f;
+  --card: #ffffff;
+  --card-foreground: #1f1f1f;
+  --primary: #0b57d0;
+  --primary-foreground: #ffffff;
+  --secondary: #e9eef6;
+  --secondary-foreground: #1f1f1f;
+  --muted: #f1f3f4;
+  --muted-foreground: #5f6368;
+  --accent: #c2e7ff;
+  --accent-foreground: #001d35;
+  --destructive: #b3261e;
+  --border: #dfe3e7;
+  --input: #c4c7c5;
+  --ring: #0b57d0;
+  --radius: 0.875rem;
+  --drive-surface: #ffffff;
+  --drive-search: #e9eef6;
+  --drive-hover: #e2e7ef;
 }
 
 .dark {
   color-scheme: dark;
-  --background: oklch(0.17 0.025 264.67);
-  --foreground: oklch(0.96 0.007 247.9);
-  --card: oklch(0.22 0.028 264.67);
-  --card-foreground: oklch(0.96 0.007 247.9);
-  --primary: oklch(0.72 0.14 254.62);
-  --primary-foreground: oklch(0.17 0.025 264.67);
-  --secondary: oklch(0.28 0.03 264.67);
-  --secondary-foreground: oklch(0.96 0.007 247.9);
-  --muted: oklch(0.28 0.03 264.67);
-  --muted-foreground: oklch(0.72 0.025 264.36);
-  --accent: oklch(0.3 0.055 258.3);
-  --accent-foreground: oklch(0.88 0.06 254.62);
-  --destructive: oklch(0.68 0.19 25.33);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.62 0.14 255.4);
+  --background: #111318;
+  --foreground: #e3e3e3;
+  --card: #1b1d22;
+  --card-foreground: #e3e3e3;
+  --primary: #a8c7fa;
+  --primary-foreground: #062e6f;
+  --secondary: #282a2f;
+  --secondary-foreground: #e3e3e3;
+  --muted: #25272c;
+  --muted-foreground: #c4c7c5;
+  --accent: #004a77;
+  --accent-foreground: #c2e7ff;
+  --destructive: #f2b8b5;
+  --border: #444746;
+  --input: #5f6368;
+  --ring: #a8c7fa;
+  --drive-surface: #1b1d22;
+  --drive-search: #282a2f;
+  --drive-hover: #33363b;
 }
 
 @theme inline {
@@ -69,3 +75,4 @@
 * { border-color: var(--border); }
 body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--background); color: var(--foreground); }
 button, a { -webkit-tap-highlight-color: transparent; }
+summary::-webkit-details-marker { display: none; }

@@ -19,15 +19,14 @@ export function SharedPage() {
     ...query.data.files.map((file) => ({ kind: 'file' as const, id: file.id, file, access: file.permission, ownerUsername: file.ownerUsername })),
   ]
 
-  return <section className="mx-auto max-w-7xl">
-    <div className="mb-6">
-      <p className="text-sm font-medium text-primary">Espacio de trabajo</p>
-      <h1 className="mt-1 text-2xl font-semibold tracking-tight md:text-3xl">Compartido conmigo</h1>
-      <p className="mt-2 text-sm text-muted-foreground">Archivos y carpetas que otras personas te han permitido consultar.</p>
+  return <section className="w-full">
+    <div className="mb-4">
+      <h1 className="text-xl font-normal text-foreground md:text-2xl">Compartido conmigo</h1>
+      <p className="mt-1 text-sm text-muted-foreground">Archivos y carpetas que otras personas te han permitido consultar.</p>
     </div>
     {notice && <OperationFeedback notice={notice} onDismiss={() => setNotice(null)} />}
     {items.length === 0
       ? <StatusState kind="empty" title="No hay elementos compartidos" description="Los recursos compartidos contigo aparecerán en esta sección." />
-      : <DriveExplorer items={items} isFetching={query.isFetching} onRefresh={() => void query.refetch()} onOpenFolder={(id) => navigate(`/drive?folderId=${encodeURIComponent(id)}`)} onNotice={setNotice} />}
+      : <DriveExplorer items={items} isFetching={query.isFetching} onRefresh={() => void query.refetch()} onOpenFolder={(id) => navigate(`/drive?folderId=${encodeURIComponent(id)}`)} onNotice={setNotice} sharedView />}
   </section>
 }
