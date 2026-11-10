@@ -7,6 +7,8 @@ import { Sidebar } from '@/components/layout/sidebar'
 import { ThemeToggle } from '@/components/layout/theme-toggle'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/features/auth/use-auth'
+import { UploadPanel } from '@/features/uploads/upload-panel'
+import { UploadProvider } from '@/features/uploads/upload-provider'
 
 export function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -31,6 +33,8 @@ export function AppShell() {
 
   return (
     <NewFolderActionContext.Provider value={layoutActions}>
+      {/* key: al cambiar de usuario el gestor se reinicia y no filtra cargas entre sesiones */}
+      <UploadProvider key={user?.id ?? 'anon'}>
       <div className="flex h-screen min-h-[32rem] flex-col overflow-hidden bg-background">
         <header className="relative z-30 flex h-16 shrink-0 items-center gap-3 px-3 md:gap-5 md:px-4">
           <div className="flex w-auto shrink-0 items-center gap-2 md:w-[216px]">
@@ -66,6 +70,8 @@ export function AppShell() {
           <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden rounded-2xl bg-[var(--drive-surface)] p-4 shadow-[0_1px_2px_rgba(60,64,67,0.08)] md:p-5 lg:p-6"><Outlet /></main>
         </div>
       </div>
+      <UploadPanel />
+      </UploadProvider>
     </NewFolderActionContext.Provider>
   )
 }

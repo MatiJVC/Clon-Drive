@@ -14,6 +14,8 @@ export const filesApi = {
     if (options.folderId) form.append('folderId', options.folderId)
     const { data } = await apiClient.post<DriveFile>('/files', form, {
       signal: options.signal,
+      // Archivos grandes pueden tardar más que el timeout global de 30 s.
+      timeout: 0,
       onUploadProgress: (event) => options.onProgress?.(event.loaded, event.total),
     })
     return data

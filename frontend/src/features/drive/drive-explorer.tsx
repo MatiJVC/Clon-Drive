@@ -11,6 +11,7 @@ import { ItemActionsMenu, type ItemAction } from '@/features/drive/item-actions-
 import { NameDialog } from '@/features/drive/name-dialog'
 import type { OperationNotice } from '@/features/drive/operation-feedback'
 import { useExplorerSelection } from '@/features/drive/use-explorer-selection'
+import { DROP_FOLDER_ID, DROP_FOLDER_NAME, DROP_SURFACE } from '@/features/uploads/upload-drop-zone'
 import { cn } from '@/lib/utils'
 import { ApiError } from '@/services/api/errors'
 import type { AccessLevel, FileProcessingStatus } from '@/types/api'
@@ -22,7 +23,7 @@ type ModifiedFilter = 'all' | '7' | '30'
 const VIEW_KEY = 'clon-drive.explorer-view'
 
 function initialView(): ViewMode {
-  return window.localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'grid'
+  return window.localStorage.getItem(VIEW_KEY) === 'grid' ? 'grid' : 'list'
 }
 
 interface DriveExplorerProps {
@@ -32,9 +33,11 @@ interface DriveExplorerProps {
   onOpenFolder: (id: string) => void
   onNotice: (notice: OperationNotice) => void
   sharedView?: boolean
+  /** Carpeta sobre la que se están arrastrando archivos (resaltada). */
+  dropTargetId?: string | null
 }
 
-export function DriveExplorer({ items, isFetching, onRefresh, onOpenFolder, onNotice, sharedView = false }: DriveExplorerProps) {
+export function DriveExplorer({ items, isFetching, onRefresh, onOpenFolder, onNotice, sharedView = false, dropTargetId = null }: DriveExplorerProps) {
   const [view, setViewState] = useState<ViewMode>(initialView)
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
   const [peopleFilter, setPeopleFilter] = useState<PeopleFilter>('all')
@@ -98,7 +101,7 @@ export function DriveExplorer({ items, isFetching, onRefresh, onOpenFolder, onNo
     } catch { /* el diálogo presenta el error */ }
   }
 
-  const viewProps: ViewProps = { items: filteredItems, selected, onSelect: selectItem, onKeyDown: handleKey, onOpenFolder, onAction: handleAction, sharedView }
+  const viewProps: ViewProps = { items: filteredItems, selected, onSelect: selectItem, onKeyDown: handleKey, onOpenFolder, onAction: handleAction, sharedView, dropTargetId }
   const filters = {
     typeFilter,
     peopleFilter,
@@ -107,11 +110,11 @@ export function DriveExplorer({ items, isFetching, onRefresh, onOpenFolder, onNo
     setPeopleFilter: (value: PeopleFilter) => { clear(); setPeopleFilter(value) },
     setModifiedFilter: (value: ModifiedFilter) => { clear(); setModifiedFilter(value) },
   }
-  return <div>
+  return <div className="flex flex-1 flex-col">
     <ExplorerToolbar view={view} setView={setView} selected={selected} selectedItem={selectedItem} clear={clear} isFetching={isFetching} onRefresh={onRefresh} onAction={handleAction} filters={filters} />
     {filteredItems.length === 0
       ? <div className="grid min-h-40 place-items-center text-center"><div><p className="font-medium">No hay elementos que coincidan</p><p className="mt-1 text-sm text-muted-foreground">Prueba con otros filtros.</p></div></div>
-      : view === 'grid' ? <GridView {...viewProps} /> : <ListView {...viewProps} />}
+      : <div className={cn(DROP_SURFACE, 'flex-1')}>{view === 'grid' ? <GridView {...viewProps} /> : <ListView {...viewProps} />}</div>}
     {renameTarget && <NameDialog title="Cambiar nombre" description={`Edita el nombre del ${renameTarget.kind === 'folder' ? 'directorio' : 'archivo'}.`} initialName={itemName(renameTarget)} submitLabel="Guardar" pending={operations.renameItem.isPending} serverError={operations.renameItem.error instanceof ApiError ? operations.renameItem.error.message : null} onClose={() => setRenameTarget(null)} onValueChange={() => operations.renameItem.reset()} onSubmit={rename} />}
     {deleteTarget && <DeleteDialog item={deleteTarget} pending={operations.removeItem.isPending} error={operations.removeItem.error instanceof ApiError ? operations.removeItem.error.message : null} onClose={() => setDeleteTarget(null)} onConfirm={() => void remove()} />}
   </div>
@@ -127,21 +130,25 @@ interface FilterState {
 }
 
 function ExplorerToolbar({ view, setView, selected, selectedItem, clear, isFetching, onRefresh, onAction, filters }: { view: ViewMode; setView: (view: ViewMode) => void; selected: Set<string>; selectedItem?: ExplorerItem; clear: () => void; isFetching: boolean; onRefresh: () => void; onAction: (action: ItemAction, item: ExplorerItem) => void; filters: FilterState }) {
+  const sortRow = <div className="flex items-center gap-2 px-1 text-sm font-medium text-[#444746] dark:text-muted-foreground"><span>Nombre</span><span className="grid size-6 place-items-center rounded-full bg-accent text-accent-foreground"><ArrowUp className="size-4" /></span></div>
   if (selected.size > 0) {
     const canEdit = selectedItem && selectedItem.access !== 'READ'
     const canDownload = selectedItem?.kind === 'file' && selectedItem.file.status === 'READY'
-    return <div className="mb-4 flex h-11 items-center gap-1 rounded-full bg-secondary px-2 text-sm" aria-live="polite">
-      <Button variant="ghost" size="icon" className="size-9 rounded-full" onClick={clear} aria-label="Limpiar selección"><X className="size-[18px]" /></Button>
-      <span className="mr-2 font-medium">{selected.size} seleccionado{selected.size === 1 ? '' : 's'}</span>
-      {selectedItem?.kind === 'folder' && <ToolbarAction label="Abrir carpeta" icon={FolderOpen} onClick={() => onAction('open', selectedItem)} />}
-      {canDownload && <ToolbarAction label="Descargar" icon={Download} onClick={() => onAction('download', selectedItem)} />}
-      {canEdit && <ToolbarAction label="Cambiar nombre" icon={Pencil} onClick={() => onAction('rename', selectedItem)} />}
-      {canEdit && <ToolbarAction label="Eliminar" icon={Trash2} onClick={() => onAction('delete', selectedItem)} />}
+    return <div className="mb-4 space-y-3">
+      <div className="flex min-h-11 items-center gap-1 rounded-full bg-secondary px-2 text-sm" aria-live="polite">
+        <Button variant="ghost" size="icon" className="size-9 rounded-full" onClick={clear} aria-label="Limpiar selección"><X className="size-[18px]" /></Button>
+        <span className="mr-2 font-medium">{selected.size} seleccionado{selected.size === 1 ? '' : 's'}</span>
+        {selectedItem?.kind === 'folder' && <ToolbarAction label="Abrir carpeta" icon={FolderOpen} onClick={() => onAction('open', selectedItem)} />}
+        {canDownload && <ToolbarAction label="Descargar" icon={Download} onClick={() => onAction('download', selectedItem)} />}
+        {canEdit && <ToolbarAction label="Cambiar nombre" icon={Pencil} onClick={() => onAction('rename', selectedItem)} />}
+        {canEdit && <ToolbarAction label="Eliminar" icon={Trash2} onClick={() => onAction('delete', selectedItem)} />}
+      </div>
+      {sortRow}
     </div>
   }
 
   return <div className="mb-4 space-y-3">
-    <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="flex min-h-11 flex-wrap items-center justify-between gap-3">
       <FilterBar filters={filters} />
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" className="rounded-full" onClick={onRefresh} disabled={isFetching} aria-label="Actualizar contenido"><RefreshCw className={cn('size-[18px]', isFetching && 'animate-spin')} /></Button>
@@ -151,7 +158,7 @@ function ExplorerToolbar({ view, setView, selected, selectedItem, clear, isFetch
         </div>
       </div>
     </div>
-    <div className="flex items-center gap-2 px-1 text-sm font-medium text-[#444746] dark:text-muted-foreground"><span>Nombre</span><span className="grid size-6 place-items-center rounded-full bg-accent text-accent-foreground"><ArrowUp className="size-4" /></span></div>
+    {sortRow}
   </div>
 }
 
@@ -165,7 +172,7 @@ function FilterBar({ filters }: { filters: FilterState }) {
 
 function FilterSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: Array<[string, string]> }) {
   const active = value !== 'all'
-  return <label className={cn('relative flex h-9 shrink-0 items-center rounded-lg border border-[#747775] bg-card px-3 text-sm hover:bg-muted dark:border-border', active && 'border-primary bg-accent text-accent-foreground')}>
+  return <label className={cn('relative flex h-9 shrink-0 items-center rounded-lg border border-[#747775] bg-card px-3 text-sm hover:bg-muted dark:border-border', active && 'border-primary bg-accent text-accent-foreground hover:bg-accent')}>
     <span className="pointer-events-none">{label}{active ? `: ${options.find(([key]) => key === value)?.[1]}` : ''}</span>
     <select className="absolute inset-0 cursor-pointer opacity-0" value={value} onChange={(event) => onChange(event.target.value)} aria-label={`Filtrar por ${label.toLowerCase()}`}>{options.map(([key, text]) => <option key={key} value={key}>{text}</option>)}</select>
     <span className="pointer-events-none ml-2 text-[10px]">▼</span>
@@ -188,6 +195,7 @@ interface ViewProps {
   onOpenFolder: (id: string) => void
   onAction: (action: ItemAction, item: ExplorerItem) => void
   sharedView: boolean
+  dropTargetId: string | null
 }
 
 function GridView(props: ViewProps) {
@@ -199,35 +207,47 @@ function GridView(props: ViewProps) {
   </div>
 }
 
-function FolderTile({ item, selected, onSelect, onKeyDown, onOpenFolder, onAction }: ViewProps & { item: Extract<ExplorerItem, { kind: 'folder' }> }) {
-  const active = selected.has(item.id)
-  return <div role="option" aria-selected={active} tabIndex={0} onClick={(event) => onSelect(item, event)} onDoubleClick={() => onOpenFolder(item.id)} onKeyDown={(event) => onKeyDown(event, item)} className={cn('flex h-12 cursor-default items-center gap-3 rounded-xl border border-transparent bg-secondary px-3 outline-none transition-colors hover:bg-[var(--drive-hover)] focus-visible:ring-2 focus-visible:ring-ring', active && 'border-primary bg-accent text-accent-foreground')}>
-    <Folder className="size-5 shrink-0 fill-current" /><span className="min-w-0 flex-1 truncate text-sm font-medium" title={item.folder.name}>{item.folder.name}</span>{item.ownerUsername && <Share2 className="size-4 shrink-0 text-muted-foreground" aria-label="Compartido" />}<ItemActionsMenu item={item} onAction={onAction} />
+function FolderTile({ item, selected, onSelect, onKeyDown, onOpenFolder, onAction, dropTargetId }: ViewProps & { item: Extract<ExplorerItem, { kind: 'folder' }> }) {
+  const active = selected.has(item.id) || dropTargetId === item.id
+  return <div {...dropProps(item)} role="option" aria-selected={active} tabIndex={0} onClick={(event) => onSelect(item, event)} onDoubleClick={() => onOpenFolder(item.id)} onKeyDown={(event) => onKeyDown(event, item)} className={cn('flex h-12 cursor-default items-center gap-3 rounded-xl border border-transparent bg-secondary px-3 outline-none transition-colors hover:bg-[var(--drive-hover)] focus-visible:ring-2 focus-visible:ring-ring', active && 'border-primary bg-accent text-accent-foreground hover:bg-accent')}>
+    <Folder className="size-5 shrink-0 fill-current  " /><span className="min-w-0 flex-1 truncate text-sm font-medium" title={item.folder.name}>{item.folder.name}</span>{item.ownerUsername && <Share2 className="size-4 shrink-0 text-muted-foreground" aria-label="Compartido" />}<ItemActionsMenu item={item} onAction={onAction} />
   </div>
 }
 
 function FileCard({ item, selected, onSelect, onKeyDown, onAction }: ViewProps & { item: Extract<ExplorerItem, { kind: 'file' }> }) {
   const active = selected.has(item.id)
-  return <div role="option" aria-selected={active} tabIndex={0} onClick={(event) => onSelect(item, event)} onKeyDown={(event) => onKeyDown(event, item)} className={cn('flex aspect-[4/5] min-h-56 cursor-default flex-col overflow-hidden rounded-xl border border-transparent bg-secondary p-2 outline-none transition-colors hover:bg-[var(--drive-hover)] focus-visible:ring-2 focus-visible:ring-ring', active && 'border-primary bg-accent')}>
+  return <div role="option" aria-selected={active} tabIndex={0} onClick={(event) => onSelect(item, event)} onKeyDown={(event) => onKeyDown(event, item)} className={cn('flex aspect-[4/5] min-h-56 cursor-default flex-col overflow-hidden rounded-xl border border-transparent bg-secondary p-2 outline-none transition-colors hover:bg-[var(--drive-hover)] focus-visible:ring-2 focus-visible:ring-ring', active && 'border-primary bg-accent hover:bg-accent')}>
     <div className="flex h-10 items-center gap-2 px-1"><FileTypeIcon file={item.file} className="size-[18px] shrink-0" /><span className="min-w-0 flex-1 truncate text-sm font-medium" title={item.file.name}>{item.file.name}</span>{item.ownerUsername && <Share2 className="size-4 shrink-0 text-muted-foreground" aria-label="Compartido" />}<ItemActionsMenu item={item} onAction={onAction} /></div>
     <div className="min-h-0 flex-1"><FileThumbnail file={item.file} /></div>
     {item.file.status !== 'READY' && <div className="px-1 pt-2"><FileStatus status={item.file.status} /></div>}
   </div>
 }
 
-function ListView({ items, selected, onSelect, onKeyDown, onOpenFolder, onAction, sharedView }: ViewProps) {
+// Vista de lista al estilo Google Drive: una sola tabla con las carpetas
+// primero y los archivos debajo.
+function ListView({ items, selected, onSelect, onKeyDown, onOpenFolder, onAction, sharedView, dropTargetId }: ViewProps) {
+  const ordered = [...items.filter((item) => item.kind === 'folder'), ...items.filter((item) => item.kind === 'file')]
+  const columns = 'grid-cols-[minmax(0,2fr)_minmax(130px,0.8fr)_minmax(130px,0.8fr)_90px_48px] max-md:grid-cols-[minmax(0,1fr)_48px]'
   return <div role="listbox" aria-label="Contenido del directorio" aria-multiselectable="true">
-    <div className="grid min-h-10 grid-cols-[minmax(0,2fr)_minmax(130px,0.8fr)_minmax(130px,0.8fr)_90px_48px] items-center gap-4 border-b px-3 text-sm font-medium text-[#444746] dark:text-muted-foreground max-md:grid-cols-[minmax(0,1fr)_48px]"><span>Nombre</span><span className="max-md:hidden">{sharedView ? 'Compartido por' : 'Propietario'}</span><span className="max-md:hidden">Fecha de modificación</span><span className="max-md:hidden">Tamaño</span><span /></div>
-    {items.map((item) => {
-      const active = selected.has(item.id)
-      const owner = item.ownerUsername ?? (item.access === 'OWNER' ? 'Yo' : '—')
+    <div className={cn('grid min-h-12 items-center gap-4 border-b px-3 text-sm font-medium text-[#444746] dark:text-muted-foreground', columns)}><span>Nombre</span><span className="max-md:hidden">{sharedView ? 'Compartido por' : 'Propietario'}</span><span className="max-md:hidden">Fecha de modificación</span><span className="max-md:hidden">Tamaño</span><span /></div>
+    {ordered.map((item) => {
+      const active = selected.has(item.id) || dropTargetId === item.id
+      const owner = item.ownerUsername ?? (item.access === 'OWNER' ? 'yo' : '—')
       const date = item.kind === 'folder' ? item.folder.updatedAt : item.file.updatedAt
-      return <div key={`${item.kind}-${item.id}`} role="option" aria-selected={active} tabIndex={0} onClick={(event) => onSelect(item, event)} onDoubleClick={() => item.kind === 'folder' && onOpenFolder(item.id)} onKeyDown={(event) => onKeyDown(event, item)} className={cn('grid min-h-12 grid-cols-[minmax(0,2fr)_minmax(130px,0.8fr)_minmax(130px,0.8fr)_90px_48px] items-center gap-4 border-b px-3 text-sm outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring max-md:grid-cols-[minmax(0,1fr)_48px]', active && 'bg-accent hover:bg-accent')}>
+      return <div key={`${item.kind}-${item.id}`} {...dropProps(item)} role="option" aria-selected={active} tabIndex={0} onClick={(event) => onSelect(item, event)} onDoubleClick={() => item.kind === 'folder' && onOpenFolder(item.id)} onKeyDown={(event) => onKeyDown(event, item)} className={cn('grid min-h-12 items-center gap-4 border-b px-3 text-sm outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring', columns, active && 'bg-accent hover:bg-accent')}>
         <div className="flex min-w-0 items-center gap-3">{item.kind === 'folder' ? <Folder className="size-[18px] shrink-0 fill-current" /> : <FileTypeIcon file={item.file} className="size-[18px] shrink-0" />}<span className="truncate font-medium" title={itemName(item)}>{itemName(item)}</span>{item.ownerUsername && <Share2 className="size-4 shrink-0 text-muted-foreground" />}{item.kind === 'file' && item.file.status !== 'READY' && <FileStatus status={item.file.status} />}</div>
-        <span className="truncate text-muted-foreground max-md:hidden">{owner}</span><span className="text-muted-foreground max-md:hidden">{formatDate(date)}</span><span className="text-muted-foreground max-md:hidden">{item.kind === 'file' ? formatBytes(item.file.size) : '—'}</span><div className="justify-self-end"><ItemActionsMenu item={item} onAction={onAction} /></div>
+        <span className="flex min-w-0 items-center gap-2 text-muted-foreground max-md:hidden"><span className="grid size-6 shrink-0 place-items-center rounded-full bg-[#7e57c2] text-[11px] font-medium uppercase text-white">{owner.charAt(0)}</span><span className="truncate">{owner}</span></span>
+        <span className="text-muted-foreground max-md:hidden">{formatDate(date)}</span>
+        <span className="text-muted-foreground max-md:hidden">{item.kind === 'file' ? formatBytes(item.file.size) : '—'}</span>
+        <div className="justify-self-end"><ItemActionsMenu item={item} onAction={onAction} /></div>
       </div>
     })}
   </div>
+}
+
+// Solo las carpetas propias aceptan archivos arrastrados (ver UploadDropZone).
+function dropProps(item: ExplorerItem) {
+  return item.kind === 'folder' && item.access === 'OWNER' && !item.ownerUsername ? { [DROP_FOLDER_ID]: item.id, [DROP_FOLDER_NAME]: item.folder.name } : {}
 }
 
 function itemName(item: ExplorerItem) { return item.kind === 'folder' ? item.folder.name : item.file.name }

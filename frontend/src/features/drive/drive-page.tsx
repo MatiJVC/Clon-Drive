@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+  import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useNewFolderAction } from '@/components/layout/use-new-folder-action'
@@ -12,6 +12,8 @@ import { NameDialog } from '@/features/drive/name-dialog'
 import { OperationFeedback, type OperationNotice } from '@/features/drive/operation-feedback'
 import { useDriveListing } from '@/features/drive/drive-queries'
 import { ApiError } from '@/services/api/errors'
+import { DROP_SURFACE, UploadDropZone } from '@/features/uploads/upload-drop-zone'
+import { cn } from '@/lib/utils'
 import type { AccessLevel, BreadcrumbItem } from '@/types/api'
 
 export function DrivePage() {
@@ -28,6 +30,7 @@ function DriveDirectory({ folderId, createRequested }: { folderId?: string; crea
   const query = useDriveListing(folderId)
   const operations = useDriveOperations()
   const [creating, setCreating] = useState(createRequested)
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null)
   const [notice, setNotice] = useState<OperationNotice | null>(() => {
     const state = location.state as { operationNotice?: OperationNotice } | null
     return state?.operationNotice ?? null
@@ -68,7 +71,7 @@ function DriveDirectory({ folderId, createRequested }: { folderId?: string; crea
   ]
   const sharedContext = data.access !== 'OWNER'
 
-  return <section className="w-full">
+  return <section className="flex min-h-full w-full flex-col">
     <div className="mb-3 flex min-h-12 flex-wrap items-center justify-between gap-3">
       <div className="min-w-0">
         {data.folder
@@ -80,12 +83,12 @@ function DriveDirectory({ folderId, createRequested }: { folderId?: string; crea
       </div>
     </div>
 
-    <div className="mt-3">
+    <UploadDropZone className="mt-3 flex flex-1 flex-col" folderId={folderId} folderName={data.folder?.name ?? 'Mi unidad'} enabled={data.access === 'OWNER'} onTargetChange={setDropTargetId}>
       {notice && <OperationFeedback notice={notice} onDismiss={() => setNotice(null)} />}
       {items.length === 0
-        ? <><div className="mb-4 flex justify-end"><Button variant="ghost" onClick={() => void query.refetch()}>Actualizar</Button></div><StatusState kind="empty" title={data.folder ? 'Esta carpeta está vacía' : 'Tu unidad está vacía'} description="Aquí aparecerán los archivos y carpetas disponibles." /></>
-        : <DriveExplorer items={items} isFetching={query.isFetching} onRefresh={() => void query.refetch()} onOpenFolder={openFolder} onNotice={setNotice} />}
-    </div>
+        ? <><div className="mb-4 flex justify-end"><Button variant="ghost" onClick={() => void query.refetch()}>Actualizar</Button></div><div className={cn(DROP_SURFACE, 'flex-1')}><StatusState kind="empty" title={data.folder ? 'Esta carpeta está vacía' : 'Tu unidad está vacía'} description="Aquí aparecerán los archivos y carpetas disponibles." /></div></>
+        : <DriveExplorer items={items} isFetching={query.isFetching} onRefresh={() => void query.refetch()} onOpenFolder={openFolder} onNotice={setNotice} dropTargetId={dropTargetId} />}
+    </UploadDropZone>
     {creating && data.access === 'OWNER' && <NameDialog title="Nueva carpeta" description={folderId ? 'La carpeta se creará dentro del directorio actual.' : 'La carpeta se creará en Mi unidad.'} submitLabel="Crear carpeta" pending={operations.createFolder.isPending} serverError={operations.createFolder.error instanceof ApiError ? operations.createFolder.error.message : null} onClose={closeCreateDialog} onValueChange={() => operations.createFolder.reset()} onSubmit={createFolder} />}
   </section>
 }
