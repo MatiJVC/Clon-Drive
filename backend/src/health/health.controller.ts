@@ -2,10 +2,12 @@ import { Controller, Get, Inject, ServiceUnavailableException } from '@nestjs/co
 import { HeadBucketCommand, S3Client } from '@aws-sdk/client-s3';
 import { GetQueueAttributesCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { sql } from 'drizzle-orm';
-import { AWS_CONFIG, type AwsConfig } from '../aws/aws.module.js';
+import { AWS_CONFIG, type AwsConfig } from '../aws/aws.config.js';
 import { DB, type Database } from '../db/database.module.js';
+import { Public } from '../common/auth-user.js';
 
 // GET /health: confirma que el backend llega a PostgreSQL, al bucket y a la cola.
+@Public()
 @Controller('health')
 export class HealthController {
   constructor(

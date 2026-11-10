@@ -1,7 +1,9 @@
 // src/test-aws/test-aws.controller.ts
 import { Controller, Get, Post } from '@nestjs/common';
 import { TestAwsService } from './test-aws.service.js';
+import { Public } from '../common/auth-user.js';
 
+@Public()
 @Controller('test-aws')
 export class TestAwsController {
   constructor(private readonly testAwsService: TestAwsService) {}
