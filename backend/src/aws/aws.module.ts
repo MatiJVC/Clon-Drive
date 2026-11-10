@@ -1,16 +1,12 @@
 import { Global, Module } from '@nestjs/common';
 import { S3Client } from '@aws-sdk/client-s3';
 import { SQSClient } from '@aws-sdk/client-sqs';
+import { AWS_CONFIG, type AwsConfig } from './aws.config.js';
+import { StorageService } from './storage.service.js';
+
+export { AWS_CONFIG, type AwsConfig } from './aws.config.js';
 
 // Configuración compartida para hablar con LocalStack (S3 y SQS).
-// Inyectar con: constructor(private s3: S3Client, private sqs: SQSClient)
-// y leer bucket/cola desde AWS_CONFIG.
-export const AWS_CONFIG = Symbol('AWS_CONFIG');
-
-export interface AwsConfig {
-  bucketName: string;
-  queueUrl: string;
-}
 
 const clientConfig = () => ({
   region: process.env.AWS_REGION ?? 'us-east-1',
@@ -36,7 +32,8 @@ const clientConfig = () => ({
           'http://localhost:4566/000000000000/drive-upload-queue',
       }),
     },
+    StorageService,
   ],
-  exports: [S3Client, SQSClient, AWS_CONFIG],
+  exports: [S3Client, SQSClient, AWS_CONFIG, StorageService],
 })
 export class AwsModule {}

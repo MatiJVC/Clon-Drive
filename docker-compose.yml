@@ -69,6 +69,9 @@ services:
       - S3_BUCKET_NAME=drive-clon-storage
       - SQS_QUEUE_URL=http://localstack:4566/000000000000/drive-upload-queue
       - CORS_ORIGIN=http://localhost:5173
+      - JWT_SECRET=${JWT_SECRET:-clon-drive-dev-secret}
+      - MAX_UPLOAD_MB=${MAX_UPLOAD_MB:-500}
+      - WORKER_DELAY_MS=${WORKER_DELAY_MS:-0} # >0 para mostrar el estado PROCESSING en la demo
     depends_on:
       postgres:
         condition: service_healthy

@@ -1,3 +1,4 @@
+import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
 
@@ -6,8 +7,10 @@ async function bootstrap() {
   // El frontend (React/Vite) corre en otro origen durante el desarrollo.
   app.enableCors({
     origin: process.env.CORS_ORIGIN?.split(',') ?? true,
-    credentials: true,
+    exposedHeaders: ['Content-Disposition'],
   });
+  // Valida los DTOs y descarta campos que no estén declarados.
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.enableShutdownHooks();
   await app.listen(process.env.PORT ?? 3000);
 }
