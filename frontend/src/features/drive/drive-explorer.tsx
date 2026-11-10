@@ -1,4 +1,4 @@
-import { ArrowUp, Check, Download, Folder, FolderOpen, Grid2X2, List, Pencil, RefreshCw, Share2, Trash2, X } from 'lucide-react'
+import { ArrowUp, Check, Download, Folder, FolderOpen, Grid2X2, List, Pencil, RefreshCw, Share2, Trash2, UserPlus, X } from 'lucide-react'
 import { type KeyboardEvent, type MouseEvent, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { DeleteDialog } from '@/features/drive/delete-dialog'
@@ -10,6 +10,7 @@ import { FileThumbnail } from '@/features/drive/file-thumbnail'
 import { ItemActionsMenu, type ItemAction } from '@/features/drive/item-actions-menu'
 import { NameDialog } from '@/features/drive/name-dialog'
 import type { OperationNotice } from '@/features/drive/operation-feedback'
+import { ShareDialog } from '@/features/drive/share-dialog'
 import { useExplorerSelection } from '@/features/drive/use-explorer-selection'
 import { DROP_FOLDER_ID, DROP_FOLDER_NAME, DROP_SURFACE } from '@/features/uploads/upload-drop-zone'
 import { cn } from '@/lib/utils'
@@ -44,6 +45,7 @@ export function DriveExplorer({ items, isFetching, onRefresh, onOpenFolder, onNo
   const [modifiedFilter, setModifiedFilter] = useState<ModifiedFilter>('all')
   const [renameTarget, setRenameTarget] = useState<ExplorerItem | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ExplorerItem | null>(null)
+  const [shareTarget, setShareTarget] = useState<ExplorerItem | null>(null)
   const filteredItems = useMemo(() => items.filter((item) => matchesFilters(item, typeFilter, peopleFilter, modifiedFilter)), [items, typeFilter, peopleFilter, modifiedFilter])
   const { selected, select, clear } = useExplorerSelection(filteredItems.map((item) => item.id))
   const operations = useDriveOperations()
@@ -72,6 +74,7 @@ export function DriveExplorer({ items, isFetching, onRefresh, onOpenFolder, onNo
     if (action === 'open' && item.kind === 'folder') onOpenFolder(item.id)
     if (action === 'rename') { operations.renameItem.reset(); setRenameTarget(item) }
     if (action === 'delete') { operations.removeItem.reset(); setDeleteTarget(item) }
+    if (action === 'share') setShareTarget(item)
     if (action === 'download' && item.kind === 'file') {
       operations.downloadFile.mutateAsync(item)
         .then((filename) => onNotice({ kind: 'success', message: `Descarga iniciada: ${filename}` }))
@@ -117,6 +120,7 @@ export function DriveExplorer({ items, isFetching, onRefresh, onOpenFolder, onNo
       : <div className={cn(DROP_SURFACE, 'flex-1')}>{view === 'grid' ? <GridView {...viewProps} /> : <ListView {...viewProps} />}</div>}
     {renameTarget && <NameDialog title="Cambiar nombre" description={`Edita el nombre del ${renameTarget.kind === 'folder' ? 'directorio' : 'archivo'}.`} initialName={itemName(renameTarget)} submitLabel="Guardar" pending={operations.renameItem.isPending} serverError={operations.renameItem.error instanceof ApiError ? operations.renameItem.error.message : null} onClose={() => setRenameTarget(null)} onValueChange={() => operations.renameItem.reset()} onSubmit={rename} />}
     {deleteTarget && <DeleteDialog item={deleteTarget} pending={operations.removeItem.isPending} error={operations.removeItem.error instanceof ApiError ? operations.removeItem.error.message : null} onClose={() => setDeleteTarget(null)} onConfirm={() => void remove()} />}
+    {shareTarget && <ShareDialog item={shareTarget} onClose={() => setShareTarget(null)} onNotice={onNotice} />}
   </div>
 }
 
@@ -133,6 +137,7 @@ function ExplorerToolbar({ view, setView, selected, selectedItem, clear, isFetch
   const sortRow = <div className="flex items-center gap-2 px-1 text-sm font-medium text-[#444746] dark:text-muted-foreground"><span>Nombre</span><span className="grid size-6 place-items-center rounded-full bg-accent text-accent-foreground"><ArrowUp className="size-4" /></span></div>
   if (selected.size > 0) {
     const canEdit = selectedItem && selectedItem.access !== 'READ'
+    const canShare = selectedItem && selectedItem.access === 'OWNER'
     const canDownload = selectedItem?.kind === 'file' && selectedItem.file.status === 'READY'
     return <div className="mb-4 space-y-3">
       <div className="flex min-h-11 items-center gap-1 rounded-full bg-secondary px-2 text-sm" aria-live="polite">
@@ -140,6 +145,7 @@ function ExplorerToolbar({ view, setView, selected, selectedItem, clear, isFetch
         <span className="mr-2 font-medium">{selected.size} seleccionado{selected.size === 1 ? '' : 's'}</span>
         {selectedItem?.kind === 'folder' && <ToolbarAction label="Abrir carpeta" icon={FolderOpen} onClick={() => onAction('open', selectedItem)} />}
         {canDownload && <ToolbarAction label="Descargar" icon={Download} onClick={() => onAction('download', selectedItem)} />}
+        {canShare && <ToolbarAction label="Compartir" icon={UserPlus} onClick={() => onAction('share', selectedItem)} />}
         {canEdit && <ToolbarAction label="Cambiar nombre" icon={Pencil} onClick={() => onAction('rename', selectedItem)} />}
         {canEdit && <ToolbarAction label="Eliminar" icon={Trash2} onClick={() => onAction('delete', selectedItem)} />}
       </div>

@@ -1,16 +1,17 @@
-import { Download, FolderOpen, MoreVertical, Pencil, Trash2 } from 'lucide-react'
+import { Download, FolderOpen, MoreVertical, Pencil, Trash2, UserPlus } from 'lucide-react'
 import { type MouseEvent, useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import type { ExplorerItem } from '@/features/drive/explorer-types'
 
-export type ItemAction = 'open' | 'download' | 'rename' | 'delete'
+export type ItemAction = 'open' | 'download' | 'rename' | 'delete' | 'share'
 
 export function ItemActionsMenu({ item, onAction }: { item: ExplorerItem; onAction: (action: ItemAction, item: ExplorerItem) => void }) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const canEdit = item.access === 'OWNER' || item.access === 'EDIT'
   const canDownload = item.kind === 'file' && item.file.status === 'READY'
-  const hasActions = item.kind === 'folder' || canDownload || canEdit
+  const canShare = item.access === 'OWNER'
+  const hasActions = item.kind === 'folder' || canDownload || canEdit || canShare
 
   useEffect(() => {
     if (!open) return
@@ -37,6 +38,7 @@ export function ItemActionsMenu({ item, onAction }: { item: ExplorerItem; onActi
       {canDownload && <MenuButton icon={Download} onClick={(event) => action(event, 'download')}>Descargar</MenuButton>}
       {(item.kind === 'folder' || canDownload) && canEdit && <div className="my-1 border-t" />}
       {canEdit && <MenuButton icon={Pencil} onClick={(event) => action(event, 'rename')}>Cambiar nombre</MenuButton>}
+      {canShare && <MenuButton icon={UserPlus} onClick={(event) => action(event, 'share')}>Compartir</MenuButton>}
       {canEdit && <><div className="my-1 border-t" /><MenuButton icon={Trash2} destructive onClick={(event) => action(event, 'delete')}>Eliminar permanentemente</MenuButton></>}
     </div>}
   </div>

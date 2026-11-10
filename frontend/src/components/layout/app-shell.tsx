@@ -1,5 +1,5 @@
 import { LogOut, Menu, Search, SlidersHorizontal, UserRound } from 'lucide-react'
-import { useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
 import { DriveLogo } from '@/components/layout/drive-logo'
 import { NewFolderActionContext, type NewFolderActionContextValue } from '@/components/layout/new-folder-action-value'
@@ -15,16 +15,21 @@ export function AppShell() {
   const navigate = useNavigate()
   const { user, logout } = useAuth()
   const newFolderAction = useRef<(() => void) | null>(null)
+
+  const register = useCallback((action: (() => void) | null) => {
+    newFolderAction.current = action
+    return () => { if (newFolderAction.current === action) newFolderAction.current = null }
+  }, [])
+
+  const request = useCallback(() => {
+    if (newFolderAction.current) newFolderAction.current()
+    else navigate('/drive?newFolder=1')
+  }, [navigate])
+
   const layoutActions = useMemo<NewFolderActionContextValue>(() => ({
-    register(action) {
-      newFolderAction.current = action
-      return () => { if (newFolderAction.current === action) newFolderAction.current = null }
-    },
-    request() {
-      if (newFolderAction.current) newFolderAction.current()
-      else navigate('/drive?newFolder=1')
-    },
-  }), [navigate])
+    register,
+    request,
+  }), [register, request])
 
   async function handleLogout() {
     await logout()
