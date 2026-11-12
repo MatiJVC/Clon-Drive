@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Check, HelpCircle, Link as LinkIcon, LoaderCircle, Trash2, User as UserIcon, X } from 'lucide-react'
+import { HelpCircle, LoaderCircle, Trash2, User as UserIcon, X } from 'lucide-react'
 import { type ChangeEvent, type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { queryKeys } from '@/app/query-keys'
 import { Button } from '@/components/ui/button'
@@ -26,8 +26,6 @@ export function ShareDialog({ item, onClose, onNotice }: ShareDialogProps) {
 
   const [username, setUsername] = useState('')
   const [permission, setPermission] = useState<SharePermission>('READ')
-  const [message, setMessage] = useState('')
-  const [copied, setCopied] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -136,16 +134,6 @@ export function ShareDialog({ item, onClose, onNotice }: ShareDialogProps) {
     }
   }
 
-  async function handleCopyLink() {
-    try {
-      await navigator.clipboard.writeText(window.location.href)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch {
-      // Fallback
-    }
-  }
-
   return (
     <div
       className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4"
@@ -167,10 +155,10 @@ export function ShareDialog({ item, onClose, onNotice }: ShareDialogProps) {
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <h2 id="share-dialog-title" className="truncate text-xl font-normal text-foreground">
-              Enviar el vínculo de &ldquo;{name}&rdquo;
+              Compartir &ldquo;{name}&rdquo;
             </h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              Enviarás acceso directo con el vínculo al siguiente {isFile ? 'documento' : 'directorio'}.
+              Comparte este {isFile ? 'archivo' : 'directorio'} con usuarios registrados mediante su nombre de usuario.
             </p>
           </div>
           <div className="flex items-center gap-1">
@@ -203,7 +191,7 @@ export function ShareDialog({ item, onClose, onNotice }: ShareDialogProps) {
               htmlFor="share-username-input"
               className="block text-xs font-medium text-primary"
             >
-              Agrega personas para enviarles el vínculo
+              Agrega personas por nombre de usuario
             </label>
 
             <div className="mt-1.5 flex items-center gap-2">
@@ -358,7 +346,7 @@ export function ShareDialog({ item, onClose, onNotice }: ShareDialogProps) {
                 disabled={submitting || !username.trim()}
               >
                 {submitting && <LoaderCircle className="size-3.5 animate-spin" />}
-                {submitting ? 'Compartiendo…' : 'Enviar'}
+                {submitting ? 'Compartiendo…' : 'Compartir'}
               </Button>
             </div>
           </div>

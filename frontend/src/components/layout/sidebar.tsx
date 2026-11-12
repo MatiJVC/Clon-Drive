@@ -199,7 +199,7 @@ export function Sidebar({
         </nav>
         <div className="mt-5 border-t px-4 pt-4">
           <p className="text-xs leading-5 text-muted-foreground">
-            Clon Drive
+            Ñrive
             <br />
             Taller Cloud Computing
           </p>

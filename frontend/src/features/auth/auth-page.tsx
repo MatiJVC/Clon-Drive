@@ -1,6 +1,7 @@
-import { Eye, EyeOff, Files, LoaderCircle } from 'lucide-react'
+import { Eye, EyeOff, LoaderCircle } from 'lucide-react'
 import { type FormEvent, type ReactNode, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { DriveLogo } from '@/components/layout/drive-logo'
 import { ThemeToggle } from '@/components/layout/theme-toggle'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -77,8 +78,8 @@ export function AuthPage({ mode }: { mode: Mode }) {
       <div className="absolute right-4 top-4"><ThemeToggle /></div>
       <div className="w-full max-w-md">
         <div className="mb-6 flex items-center justify-center gap-3">
-          <div className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground"><Files className="size-5" /></div>
-          <span className="text-xl font-semibold tracking-tight">Clon Drive</span>
+          <DriveLogo className="size-10" />
+          <span className="text-xl font-semibold tracking-tight">Ñrive</span>
         </div>
         <Card>
           <CardHeader className="text-center">

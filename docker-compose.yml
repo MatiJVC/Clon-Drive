@@ -68,7 +68,7 @@ services:
       - AWS_SECRET_ACCESS_KEY=test
       - S3_BUCKET_NAME=drive-clon-storage
       - SQS_QUEUE_URL=http://localstack:4566/000000000000/drive-upload-queue
-      - CORS_ORIGIN=http://localhost:5173
+      - CORS_ORIGIN=http://localhost:5173,http://localhost:8080
       - JWT_SECRET=${JWT_SECRET:-clon-drive-dev-secret}
       - MAX_UPLOAD_MB=${MAX_UPLOAD_MB:-500}
       - WORKER_DELAY_MS=${WORKER_DELAY_MS:-0} # >0 para mostrar el estado PROCESSING en la demo
@@ -77,6 +77,19 @@ services:
         condition: service_healthy
       terraform:
         condition: service_completed_successfully
+    restart: unless-stopped
+
+  # --- Aplicación web Ñrive servida por Nginx ---
+  frontend:
+    container_name: frontend_drive
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:${BACKEND_PORT:-3000}
+    ports:
+      - '127.0.0.1:8080:80'
+    depends_on:
+      - backend
     restart: unless-stopped
 
 volumes:

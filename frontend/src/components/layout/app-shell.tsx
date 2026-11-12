@@ -45,12 +45,12 @@ export function AppShell() {
           <div className="flex w-auto shrink-0 items-center gap-2 md:w-[216px]">
             <Button className="md:hidden" variant="ghost" size="icon" onClick={() => setSidebarOpen(true)} aria-label="Abrir navegación"><Menu className="size-5" /></Button>
             <DriveLogo className="size-9" />
-            <span className="hidden text-[22px] font-normal text-[#444746] dark:text-foreground sm:block">Drive</span>
+            <span className="hidden text-[22px] font-normal text-[#444746] dark:text-foreground sm:block">Ñrive</span>
           </div>
           <div className="flex min-w-0 flex-1 justify-center">
-            <div className="flex h-12 w-full max-w-[720px] items-center rounded-full bg-[var(--drive-search)] px-4 text-[#444746] shadow-sm dark:text-muted-foreground" role="search" aria-label="Buscar en Drive (no disponible)" aria-disabled="true" title="La búsqueda estará disponible en una fase posterior">
+            <div className="flex h-12 w-full max-w-[720px] items-center rounded-full bg-[var(--drive-search)] px-4 text-[#444746] shadow-sm dark:text-muted-foreground" role="search" aria-label="Buscar en Ñrive (no disponible)" aria-disabled="true" title="La búsqueda todavía no está disponible">
               <Search className="size-5 shrink-0" />
-              <span className="ml-3 flex-1 truncate text-base">Buscar en Drive</span>
+              <span className="ml-3 flex-1 truncate text-base">Buscar en Ñrive</span>
               <SlidersHorizontal className="size-5 shrink-0" aria-hidden="true" />
             </div>
           </div>

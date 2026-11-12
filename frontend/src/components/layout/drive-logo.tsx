@@ -1,7 +1,7 @@
 export function DriveLogo({ className = 'size-9' }: { className?: string }) {
   return <svg className={className} viewBox="0 0 48 48" aria-hidden="true">
-    <path fill="#0F9D58" d="M17.4 6h13.2l12 20.8-6.6 11.4L23.4 16.4 17.4 6Z" />
-    <path fill="#F4B400" d="M17.4 6 5.4 26.8 12 38.2l12-20.8L17.4 6Z" />
-    <path fill="#4285F4" d="M12 38.2h24l6.6-11.4h-24L12 38.2Z" />
+    <path fill="#635BFF" d="M8 11.5A3.5 3.5 0 0 1 11.5 8h3.8l17.2 23.1V11.5A3.5 3.5 0 0 1 36 8h4v28.5a3.5 3.5 0 0 1-3.5 3.5h-3.8L15.5 16.9v19.6A3.5 3.5 0 0 1 12 40H8V11.5Z" />
+    <path fill="#25C2A0" d="M19 8h11v6H19a3 3 0 0 1 0-6Z" />
+    <path fill="#FFB020" d="M28.5 34H40v6H28.5a3 3 0 0 1 0-6Z" />
   </svg>
 }

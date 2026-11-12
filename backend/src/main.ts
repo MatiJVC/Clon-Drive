@@ -4,9 +4,16 @@ import { AppModule } from './app.module.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  // El frontend (React/Vite) corre en otro origen durante el desarrollo.
+  const allowedOrigins = (
+    process.env.CORS_ORIGIN ??
+    'http://localhost:5173,http://localhost:8080'
+  )
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  // Admite únicamente los orígenes configurados para Vite y Nginx.
   app.enableCors({
-    origin: process.env.CORS_ORIGIN?.split(',') ?? true,
+    origin: allowedOrigins,
     exposedHeaders: ['Content-Disposition'],
   });
   // Valida los DTOs y descarta campos que no estén declarados.
