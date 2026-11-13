@@ -23,6 +23,7 @@ Errores: `400` datos inválidos · `401` sin token o token inválido · `403` si
 | GET | `/drive` | Raíz del usuario |
 | GET | `/drive?folderId=X` | Contenido de la carpeta X (propia o compartida) |
 | GET | `/drive/shared` | `{ folders, files }` compartidos conmigo, cada uno con `permission` y `ownerUsername` |
+| GET | `/drive/search?q=texto` | `{ folders, files }` cuyo nombre contiene el texto, propios o compartidos (también dentro de carpetas compartidas). Cada uno trae `access` y, si no es propio, `ownerUsername`. Máximo 50 de cada tipo |
 
 `/drive` devuelve `{ folder, access, breadcrumb: [{ id, name }], folders: [...], files: [...] }`.
 `access` es `OWNER`, `EDIT` o `READ` y sirve para mostrar u ocultar botones.
@@ -42,6 +43,8 @@ Errores: `400` datos inválidos · `401` sin token o token inválido · `403` si
 | POST | `/files` | `multipart/form-data`: `file`, `folderId?` | dueño de la carpeta |
 | GET | `/files/:id` | — | READ (sirve para consultar `status`) |
 | GET | `/files/:id/download` | — | READ, solo si `status = READY` |
+| GET | `/files/:id/preview` | — | READ, solo si `READY`. Devuelve `{ url, mimeType }`: una URL temporal (15 min) para la vista previa |
+| GET | `/files/:id/stream?token=…` | — | Pública (el token va en la URL). Sirve el archivo `inline` y acepta `Range`, para `<video>`, `<audio>` e `<iframe>` |
 | PATCH | `/files/:id` | `{ name }` | EDIT |
 | DELETE | `/files/:id` | — | EDIT |
 | POST | `/files/:id/cancel` | — | dueño, si aún no está `READY` |
@@ -56,6 +59,11 @@ Cancelar:
 - Si ya respondió `202` pero sigue `PROCESSING`, se usa `POST /files/:id/cancel`.
 
 Tamaño máximo: `MAX_UPLOAD_MB` (500 por defecto). Con `WORKER_DELAY_MS=3000` el worker espera 3 s antes de procesar cada archivo, para que en la demo se alcance a ver el estado `PROCESSING`.
+
+Vista previa:
+- `<video>`, `<audio>` e `<iframe>` no pueden enviar el header `Authorization`, por eso `GET /files/:id/preview` entrega una URL con un token que dura 15 minutos y solo sirve para leer ese archivo. No funciona como token de sesión.
+- El permiso se vuelve a revisar en cada petición: si dejan de compartir el archivo, el enlace deja de funcionar.
+- HTML, SVG, XML y JavaScript se entregan como texto plano y aislados, para que no ejecuten código en el navegador.
 
 ## Compartir
 

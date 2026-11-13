@@ -36,7 +36,10 @@ export class AuthGuard implements CanActivate {
       const payload = await this.jwt.verifyAsync<{
         sub: string;
         username: string;
+        purpose?: string;
       }>(token);
+      // Los tokens de vista previa (purpose) solo sirven para /files/:id/stream.
+      if (payload.purpose) throw new Error('token de propósito específico');
       req.user = { id: payload.sub, username: payload.username };
       return true;
     } catch {

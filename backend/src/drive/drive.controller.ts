@@ -16,6 +16,12 @@ export class DriveController {
     return this.drive.list(user.id, folderId);
   }
 
+  // GET /drive/search?q=texto -> busca por nombre en lo propio y lo compartido
+  @Get('search')
+  search(@CurrentUser() user: AuthUser, @Query('q') q = '') {
+    return this.drive.search(user.id, String(q).slice(0, 100));
+  }
+
   // GET /drive/shared -> lo que me compartieron
   @Get('shared')
   shared(@CurrentUser() user: AuthUser) {

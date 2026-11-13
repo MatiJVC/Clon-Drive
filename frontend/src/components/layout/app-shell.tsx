@@ -1,7 +1,8 @@
-import { LogOut, Menu, Search, SlidersHorizontal, UserRound } from 'lucide-react'
+import { LogOut, Menu, UserRound } from 'lucide-react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
 import { DriveLogo } from '@/components/layout/drive-logo'
+import { SearchBox } from '@/components/layout/search-box'
 import { NewFolderActionContext, type NewFolderActionContextValue } from '@/components/layout/new-folder-action-value'
 import { Sidebar } from '@/components/layout/sidebar'
 import { ThemeToggle } from '@/components/layout/theme-toggle'
@@ -48,11 +49,7 @@ export function AppShell() {
             <span className="hidden text-[22px] font-normal text-[#444746] dark:text-foreground sm:block">Ñrive</span>
           </div>
           <div className="flex min-w-0 flex-1 justify-center">
-            <div className="flex h-12 w-full max-w-[720px] items-center rounded-full bg-[var(--drive-search)] px-4 text-[#444746] shadow-sm dark:text-muted-foreground" role="search" aria-label="Buscar en Ñrive (no disponible)" aria-disabled="true" title="La búsqueda todavía no está disponible">
-              <Search className="size-5 shrink-0" />
-              <span className="ml-3 flex-1 truncate text-base">Buscar en Ñrive</span>
-              <SlidersHorizontal className="size-5 shrink-0" aria-hidden="true" />
-            </div>
+            <SearchBox />
           </div>
           <div className="flex shrink-0 items-center gap-1 md:gap-2">
             <ThemeToggle />

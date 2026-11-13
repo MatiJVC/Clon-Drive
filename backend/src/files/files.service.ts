@@ -1,10 +1,14 @@
 import {
   BadRequestException,
   ConflictException,
+  HttpException,
+  HttpStatus,
   Inject,
   Injectable,
   Logger,
+  UnauthorizedException,
 } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { randomUUID } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import { unlink } from 'node:fs/promises';
@@ -35,6 +39,7 @@ export class FilesService {
     @Inject(DB) private readonly db: Database,
     private readonly access: AccessService,
     private readonly storage: StorageService,
+    private readonly jwt: JwtService,
   ) {}
 
   // Paso 1 del flujo de carga (el paso 2 lo hace UploadWorker):
@@ -95,6 +100,51 @@ export class FilesService {
     return { file, body: obj.Body as Readable };
   }
 
+  // Vista previa: el navegador no puede mandar el header Authorization en un
+  // <video>, <audio> o <iframe>, así que se entrega una URL con un token
+  // corto (15 min) que solo sirve para leer ESTE archivo.
+  async previewUrl(userId: string, fileId: string) {
+    const { file } = await this.access.requireFile(userId, fileId, 'READ');
+    if (file.status !== 'READY')
+      throw new ConflictException('El archivo todavía se está procesando');
+    const token = await this.jwt.signAsync(
+      { sub: userId, fileId, purpose: 'preview' },
+      { expiresIn: '15m' },
+    );
+    return {
+      url: `/files/${fileId}/stream?token=${encodeURIComponent(token)}`,
+      mimeType: file.mimeType,
+    };
+  }
+
+  async stream(fileId: string, token: string | undefined, rangeHeader?: string) {
+    let payload: { sub: string; fileId: string; purpose: string };
+    try {
+      payload = await this.jwt.verifyAsync(token ?? '');
+    } catch {
+      throw new UnauthorizedException('Enlace de vista previa inválido o expirado');
+    }
+    if (payload.purpose !== 'preview' || payload.fileId !== fileId)
+      throw new UnauthorizedException('Enlace de vista previa inválido');
+
+    // Se revisa el permiso de nuevo: si dejaron de compartirlo, deja de verse.
+    const { file } = await this.access.requireFile(payload.sub, fileId, 'READ');
+    if (file.status !== 'READY')
+      throw new ConflictException('El archivo todavía se está procesando');
+
+    const range = parseRange(rangeHeader, file.size);
+    if (range === 'invalid')
+      throw new HttpException(
+        'Rango no válido',
+        HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE,
+      );
+    const obj = await this.storage.get(
+      file.s3Key,
+      range ? `bytes=${range.start}-${range.end}` : undefined,
+    );
+    return { file, body: obj.Body as Readable, range };
+  }
+
   async rename(userId: string, fileId: string, name: string) {
     await this.access.requireFile(userId, fileId, 'EDIT');
     await this.db.update(files).set({ name }).where(eq(files.id, fileId));
@@ -134,6 +184,25 @@ export class FilesService {
       .where(eq(files.id, fileId));
     return file;
   }
+}
+
+// Interpreta el header Range ("bytes=inicio-fin", "bytes=inicio-" o
+// "bytes=-sufijo"). null = enviar el archivo completo.
+function parseRange(header: string | undefined, size: number) {
+  if (!header) return null;
+  const m = /^bytes=(\d*)-(\d*)$/.exec(header.trim());
+  if (!m || (m[1] === '' && m[2] === '')) return null;
+  let start: number;
+  let end: number;
+  if (m[1] === '') {
+    start = Math.max(size - Number(m[2]), 0);
+    end = size - 1;
+  } else {
+    start = Number(m[1]);
+    end = m[2] === '' ? size - 1 : Math.min(Number(m[2]), size - 1);
+  }
+  if (start > end || start >= size) return 'invalid' as const;
+  return { start, end };
 }
 
 // Multer entrega el nombre en latin1; si en realidad venía en UTF-8

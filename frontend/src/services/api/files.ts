@@ -1,5 +1,5 @@
-import { apiClient } from '@/services/api/client'
-import type { DriveFile } from '@/types/api'
+import { apiClient, baseURL } from '@/services/api/client'
+import type { DriveFile, PreviewLink } from '@/types/api'
 
 export interface UploadOptions {
   folderId?: string
@@ -26,6 +26,15 @@ export const filesApi = {
   },
   async download(id: string, signal?: AbortSignal) {
     return apiClient.get<Blob>(`/files/${id}/download`, { responseType: 'blob', signal })
+  },
+  /** URL temporal (15 min) para mostrar el archivo en <video>, <audio> o <iframe>. */
+  async previewUrl(id: string, signal?: AbortSignal) {
+    return `${baseURL}${await filesApi.previewPath(id, signal)}`
+  },
+  /** Misma URL temporal, pero relativa (/files/:id/stream?token=…). */
+  async previewPath(id: string, signal?: AbortSignal) {
+    const { data } = await apiClient.get<PreviewLink>(`/files/${id}/preview`, { signal })
+    return data.url
   },
   async rename(id: string, name: string, signal?: AbortSignal) {
     const { data } = await apiClient.patch<DriveFile>(`/files/${id}`, { name }, { signal })

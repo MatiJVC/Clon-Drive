@@ -1,9 +1,9 @@
-import { Download, FolderOpen, MoreVertical, Pencil, Trash2, UserPlus } from 'lucide-react'
+import { Download, Eye, FolderOpen, MoreVertical, Pencil, Trash2, UserPlus } from 'lucide-react'
 import { type MouseEvent, useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import type { ExplorerItem } from '@/features/drive/explorer-types'
 
-export type ItemAction = 'open' | 'download' | 'rename' | 'delete' | 'share'
+export type ItemAction = 'open' | 'preview' | 'download' | 'rename' | 'delete' | 'share'
 
 export function ItemActionsMenu({ item, onAction }: { item: ExplorerItem; onAction: (action: ItemAction, item: ExplorerItem) => void }) {
   const [open, setOpen] = useState(false)
@@ -35,6 +35,7 @@ export function ItemActionsMenu({ item, onAction }: { item: ExplorerItem; onActi
     <button className="grid size-8 place-items-center rounded-full text-foreground hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:hover:bg-white/10" onClick={() => setOpen((value) => !value)} aria-label="Acciones del elemento" aria-haspopup="menu" aria-expanded={open}><MoreVertical className="size-[18px]" /></button>
     {open && <div className="absolute right-0 top-9 z-40 w-60 overflow-hidden rounded-lg border bg-card py-2 shadow-[0_4px_16px_rgba(60,64,67,0.28)]" role="menu">
       {item.kind === 'folder' && <MenuButton icon={FolderOpen} onClick={(event) => action(event, 'open')}>Abrir</MenuButton>}
+      {canDownload && <MenuButton icon={Eye} onClick={(event) => action(event, 'preview')}>Vista previa</MenuButton>}
       {canDownload && <MenuButton icon={Download} onClick={(event) => action(event, 'download')}>Descargar</MenuButton>}
       {(item.kind === 'folder' || canDownload) && canEdit && <div className="my-1 border-t" />}
       {canEdit && <MenuButton icon={Pencil} onClick={(event) => action(event, 'rename')}>Cambiar nombre</MenuButton>}

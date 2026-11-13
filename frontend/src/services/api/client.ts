@@ -2,7 +2,7 @@ import axios from 'axios'
 import { tokenStorage } from '@/features/auth/token-storage'
 import { normalizeApiError } from '@/services/api/errors'
 
-const baseURL = (import.meta.env.VITE_API_URL ?? 'http://localhost:3000').replace(/\/$/, '')
+export const baseURL = (import.meta.env.VITE_API_URL ?? 'http://localhost:3000').replace(/\/$/, '')
 
 export const apiClient = axios.create({
   baseURL,

@@ -40,6 +40,13 @@ export interface SharedFolder extends Folder { permission: SharePermission; owne
 export interface SharedFile extends DriveFile { permission: SharePermission; ownerUsername: string }
 export interface SharedListing { folders: SharedFolder[]; files: SharedFile[] }
 
+/** Resultado de búsqueda: incluye el nivel de acceso; ownerUsername solo si no es propio. */
+export interface SearchFolder extends Folder { access: AccessLevel; ownerUsername?: string }
+export interface SearchFile extends DriveFile { access: AccessLevel; ownerUsername?: string }
+export interface SearchListing { folders: SearchFolder[]; files: SearchFile[] }
+
+export interface PreviewLink { url: string; mimeType: string }
+
 export interface ShareRecord {
   id: string
   permission: SharePermission

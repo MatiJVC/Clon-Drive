@@ -1,11 +1,14 @@
-import { ArrowUp, Check, Download, Folder, FolderOpen, Grid2X2, List, Pencil, RefreshCw, Share2, Trash2, UserPlus, X } from 'lucide-react'
-import { type KeyboardEvent, type MouseEvent, useMemo, useState } from 'react'
+import { ArrowUp, Check, Download, Eye, Folder, FolderOpen, Grid2X2, List, Pencil, RefreshCw, Share2, Trash2, UserPlus, X } from 'lucide-react'
+import { useQueryClient, type QueryClient } from '@tanstack/react-query'
+import { type DragEvent, type KeyboardEvent, type MouseEvent, useMemo, useState } from 'react'
+import { queryKeys } from '@/app/query-keys'
 import { Button } from '@/components/ui/button'
 import { DeleteDialog } from '@/features/drive/delete-dialog'
 import { FileTypeIcon } from '@/features/drive/file-type-icon'
 import { formatBytes, formatDate, statusLabels } from '@/features/drive/drive-utils'
 import { useDriveOperations } from '@/features/drive/drive-operations'
 import type { ExplorerItem } from '@/features/drive/explorer-types'
+import { FilePreviewDialog } from '@/features/drive/file-preview-dialog'
 import { FileThumbnail } from '@/features/drive/file-thumbnail'
 import { ItemActionsMenu, type ItemAction } from '@/features/drive/item-actions-menu'
 import { NameDialog } from '@/features/drive/name-dialog'
@@ -15,6 +18,7 @@ import { useExplorerSelection } from '@/features/drive/use-explorer-selection'
 import { DROP_FOLDER_ID, DROP_FOLDER_NAME, DROP_SURFACE } from '@/features/uploads/upload-drop-zone'
 import { cn } from '@/lib/utils'
 import { ApiError } from '@/services/api/errors'
+import { filesApi } from '@/services/api/files'
 import type { AccessLevel, FileProcessingStatus } from '@/types/api'
 
 type ViewMode = 'grid' | 'list'
@@ -46,6 +50,7 @@ export function DriveExplorer({ items, isFetching, onRefresh, onOpenFolder, onNo
   const [renameTarget, setRenameTarget] = useState<ExplorerItem | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ExplorerItem | null>(null)
   const [shareTarget, setShareTarget] = useState<ExplorerItem | null>(null)
+  const [previewTarget, setPreviewTarget] = useState<Extract<ExplorerItem, { kind: 'file' }> | null>(null)
   const filteredItems = useMemo(() => items.filter((item) => matchesFilters(item, typeFilter, peopleFilter, modifiedFilter)), [items, typeFilter, peopleFilter, modifiedFilter])
   const { selected, select, clear } = useExplorerSelection(filteredItems.map((item) => item.id))
   const operations = useDriveOperations()
@@ -64,6 +69,9 @@ export function DriveExplorer({ items, isFetching, onRefresh, onOpenFolder, onNo
     if (event.key === 'Enter' && item.kind === 'folder') {
       event.preventDefault()
       onOpenFolder(item.id)
+    } else if (event.key === 'Enter' && item.kind === 'file' && item.file.status === 'READY') {
+      event.preventDefault()
+      setPreviewTarget(item)
     } else if (event.key === ' ') {
       event.preventDefault()
       selectItem(item, event)
@@ -75,6 +83,7 @@ export function DriveExplorer({ items, isFetching, onRefresh, onOpenFolder, onNo
     if (action === 'rename') { operations.renameItem.reset(); setRenameTarget(item) }
     if (action === 'delete') { operations.removeItem.reset(); setDeleteTarget(item) }
     if (action === 'share') setShareTarget(item)
+    if (action === 'preview' && item.kind === 'file') setPreviewTarget(item)
     if (action === 'download' && item.kind === 'file') {
       operations.downloadFile.mutateAsync(item)
         .then((filename) => onNotice({ kind: 'success', message: `Descarga iniciada: ${filename}` }))
@@ -120,6 +129,7 @@ export function DriveExplorer({ items, isFetching, onRefresh, onOpenFolder, onNo
       : <div className={cn(DROP_SURFACE, 'flex-1')}>{view === 'grid' ? <GridView {...viewProps} /> : <ListView {...viewProps} />}</div>}
     {renameTarget && <NameDialog title="Cambiar nombre" description={`Edita el nombre del ${renameTarget.kind === 'folder' ? 'directorio' : 'archivo'}.`} initialName={itemName(renameTarget)} submitLabel="Guardar" pending={operations.renameItem.isPending} serverError={operations.renameItem.error instanceof ApiError ? operations.renameItem.error.message : null} onClose={() => setRenameTarget(null)} onValueChange={() => operations.renameItem.reset()} onSubmit={rename} />}
     {deleteTarget && <DeleteDialog item={deleteTarget} pending={operations.removeItem.isPending} error={operations.removeItem.error instanceof ApiError ? operations.removeItem.error.message : null} onClose={() => setDeleteTarget(null)} onConfirm={() => void remove()} />}
+    {previewTarget && <FilePreviewDialog file={previewTarget.file} onClose={() => setPreviewTarget(null)} onDownload={() => handleAction('download', previewTarget)} />}
     {shareTarget && <ShareDialog item={shareTarget} onClose={() => setShareTarget(null)} onNotice={onNotice} />}
   </div>
 }
@@ -144,6 +154,7 @@ function ExplorerToolbar({ view, setView, selected, selectedItem, clear, isFetch
         <Button variant="ghost" size="icon" className="size-9 rounded-full" onClick={clear} aria-label="Limpiar selección"><X className="size-[18px]" /></Button>
         <span className="mr-2 font-medium">{selected.size} seleccionado{selected.size === 1 ? '' : 's'}</span>
         {selectedItem?.kind === 'folder' && <ToolbarAction label="Abrir carpeta" icon={FolderOpen} onClick={() => onAction('open', selectedItem)} />}
+        {canDownload && <ToolbarAction label="Vista previa" icon={Eye} onClick={() => onAction('preview', selectedItem)} />}
         {canDownload && <ToolbarAction label="Descargar" icon={Download} onClick={() => onAction('download', selectedItem)} />}
         {canShare && <ToolbarAction label="Compartir" icon={UserPlus} onClick={() => onAction('share', selectedItem)} />}
         {canEdit && <ToolbarAction label="Cambiar nombre" icon={Pencil} onClick={() => onAction('rename', selectedItem)} />}
@@ -215,14 +226,15 @@ function GridView(props: ViewProps) {
 
 function FolderTile({ item, selected, onSelect, onKeyDown, onOpenFolder, onAction, dropTargetId }: ViewProps & { item: Extract<ExplorerItem, { kind: 'folder' }> }) {
   const active = selected.has(item.id) || dropTargetId === item.id
-  return <div {...dropProps(item)} role="option" aria-selected={active} tabIndex={0} onClick={(event) => onSelect(item, event)} onDoubleClick={() => onOpenFolder(item.id)} onKeyDown={(event) => onKeyDown(event, item)} className={cn('flex h-12 cursor-default items-center gap-3 rounded-xl border border-transparent bg-secondary px-3 outline-none transition-colors hover:bg-[var(--drive-hover)] focus-visible:ring-2 focus-visible:ring-ring', active && 'border-primary bg-accent text-accent-foreground hover:bg-accent')}>
+  return <div {...dropProps(item)} role="option" aria-selected={active} tabIndex={0} onClick={(event) => onSelect(item, event)} onDoubleClick={() => onOpenFolder(item.id)} onKeyDown={(event) => onKeyDown(event, item)} className={cn('flex h-12 cursor-default select-none items-center gap-3 rounded-xl border border-transparent bg-secondary px-3 outline-none transition-colors hover:bg-[var(--drive-hover)] focus-visible:ring-2 focus-visible:ring-ring', active && 'border-primary bg-accent text-accent-foreground hover:bg-accent')}>
     <Folder className="size-5 shrink-0 fill-current  " /><span className="min-w-0 flex-1 truncate text-sm font-medium" title={item.folder.name}>{item.folder.name}</span>{item.ownerUsername && <Share2 className="size-4 shrink-0 text-muted-foreground" aria-label="Compartido" />}<ItemActionsMenu item={item} onAction={onAction} />
   </div>
 }
 
 function FileCard({ item, selected, onSelect, onKeyDown, onAction }: ViewProps & { item: Extract<ExplorerItem, { kind: 'file' }> }) {
   const active = selected.has(item.id)
-  return <div role="option" aria-selected={active} tabIndex={0} onClick={(event) => onSelect(item, event)} onKeyDown={(event) => onKeyDown(event, item)} className={cn('flex aspect-[4/5] min-h-56 cursor-default flex-col overflow-hidden rounded-xl border border-transparent bg-secondary p-2 outline-none transition-colors hover:bg-[var(--drive-hover)] focus-visible:ring-2 focus-visible:ring-ring', active && 'border-primary bg-accent hover:bg-accent')}>
+  const queryClient = useQueryClient()
+  return <div {...dragOutProps(item, queryClient)} role="option" aria-selected={active} tabIndex={0} onClick={(event) => onSelect(item, event)} onDoubleClick={() => item.file.status === 'READY' && onAction('preview', item)} onKeyDown={(event) => onKeyDown(event, item)} className={cn('flex aspect-[4/5] min-h-56 cursor-default select-none flex-col overflow-hidden rounded-xl border border-transparent bg-secondary p-2 outline-none transition-colors hover:bg-[var(--drive-hover)] focus-visible:ring-2 focus-visible:ring-ring', active && 'border-primary bg-accent hover:bg-accent')}>
     <div className="flex h-10 items-center gap-2 px-1"><FileTypeIcon file={item.file} className="size-[18px] shrink-0" /><span className="min-w-0 flex-1 truncate text-sm font-medium" title={item.file.name}>{item.file.name}</span>{item.ownerUsername && <Share2 className="size-4 shrink-0 text-muted-foreground" aria-label="Compartido" />}<ItemActionsMenu item={item} onAction={onAction} /></div>
     <div className="min-h-0 flex-1"><FileThumbnail file={item.file} /></div>
     {item.file.status !== 'READY' && <div className="px-1 pt-2"><FileStatus status={item.file.status} /></div>}
@@ -232,6 +244,7 @@ function FileCard({ item, selected, onSelect, onKeyDown, onAction }: ViewProps &
 // Vista de lista al estilo Google Drive: una sola tabla con las carpetas
 // primero y los archivos debajo.
 function ListView({ items, selected, onSelect, onKeyDown, onOpenFolder, onAction, sharedView, dropTargetId }: ViewProps) {
+  const queryClient = useQueryClient()
   const ordered = [...items.filter((item) => item.kind === 'folder'), ...items.filter((item) => item.kind === 'file')]
   const columns = 'grid-cols-[minmax(0,2fr)_minmax(130px,0.8fr)_minmax(130px,0.8fr)_90px_48px] max-md:grid-cols-[minmax(0,1fr)_48px]'
   return <div role="listbox" aria-label="Contenido del directorio" aria-multiselectable="true">
@@ -240,7 +253,7 @@ function ListView({ items, selected, onSelect, onKeyDown, onOpenFolder, onAction
       const active = selected.has(item.id) || dropTargetId === item.id
       const owner = item.ownerUsername ?? (item.access === 'OWNER' ? 'yo' : '—')
       const date = item.kind === 'folder' ? item.folder.updatedAt : item.file.updatedAt
-      return <div key={`${item.kind}-${item.id}`} {...dropProps(item)} role="option" aria-selected={active} tabIndex={0} onClick={(event) => onSelect(item, event)} onDoubleClick={() => item.kind === 'folder' && onOpenFolder(item.id)} onKeyDown={(event) => onKeyDown(event, item)} className={cn('grid min-h-12 items-center gap-4 border-b px-3 text-sm outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring', columns, active && 'bg-accent hover:bg-accent')}>
+      return <div key={`${item.kind}-${item.id}`} {...dropProps(item)} {...dragOutProps(item, queryClient)} role="option" aria-selected={active} tabIndex={0} onClick={(event) => onSelect(item, event)} onDoubleClick={() => item.kind === 'folder' ? onOpenFolder(item.id) : item.file.status === 'READY' && onAction('preview', item)} onKeyDown={(event) => onKeyDown(event, item)} className={cn('grid min-h-12 cursor-default select-none items-center gap-4 border-b px-3 text-sm outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring', columns, active && 'bg-accent hover:bg-accent')}>
         <div className="flex min-w-0 items-center gap-3">{item.kind === 'folder' ? <Folder className="size-[18px] shrink-0 fill-current" /> : <FileTypeIcon file={item.file} className="size-[18px] shrink-0" />}<span className="truncate font-medium" title={itemName(item)}>{itemName(item)}</span>{item.ownerUsername && <Share2 className="size-4 shrink-0 text-muted-foreground" />}{item.kind === 'file' && item.file.status !== 'READY' && <FileStatus status={item.file.status} />}</div>
         <span className="flex min-w-0 items-center gap-2 text-muted-foreground max-md:hidden"><span className="grid size-6 shrink-0 place-items-center rounded-full bg-[#7e57c2] text-[11px] font-medium uppercase text-white">{owner.charAt(0)}</span><span className="truncate">{owner}</span></span>
         <span className="text-muted-foreground max-md:hidden">{formatDate(date)}</span>
@@ -254,6 +267,31 @@ function ListView({ items, selected, onSelect, onKeyDown, onOpenFolder, onAction
 // Solo las carpetas propias aceptan archivos arrastrados (ver UploadDropZone).
 function dropProps(item: ExplorerItem) {
   return item.kind === 'folder' && item.access === 'OWNER' && !item.ownerUsername ? { [DROP_FOLDER_ID]: item.id, [DROP_FOLDER_NAME]: item.folder.name } : {}
+}
+
+// Arrastrar un archivo fuera del navegador (por ejemplo al escritorio) lo
+// descarga. Usa el formato "DownloadURL" de Chrome/Edge, que necesita una URL
+// directa: se pide por adelantado la URL temporal de vista previa al pasar el
+// mouse, porque al empezar a arrastrar ya no se puede esperar una respuesta.
+// Chrome bloquea estas descargas si la URL es de otro origen, por eso se usa
+// /api/… del mismo origen del frontend (Nginx y Vite lo reenvían al backend).
+function dragOutProps(item: ExplorerItem, queryClient: QueryClient) {
+  if (item.kind !== 'file' || item.file.status !== 'READY') return {}
+  const key = [...queryKeys.files.detail(item.id), 'preview-path']
+  const prefetch = () => void queryClient.prefetchQuery({ queryKey: key, queryFn: ({ signal }) => filesApi.previewPath(item.id, signal), staleTime: 10 * 60_000 })
+  return {
+    draggable: true,
+    onPointerEnter: prefetch,
+    onFocus: prefetch,
+    onDragStart: (event: DragEvent<HTMLDivElement>) => {
+      const path = queryClient.getQueryData<string>(key)
+      if (!path) { event.preventDefault(); return }
+      const url = `${window.location.origin}/api${path}`
+      const name = item.file.name.replace(/:/g, '_')
+      event.dataTransfer.effectAllowed = 'copy'
+      event.dataTransfer.setData('DownloadURL', `${item.file.mimeType}:${name}:${url}`)
+    },
+  }
 }
 
 function itemName(item: ExplorerItem) { return item.kind === 'folder' ? item.folder.name : item.file.name }

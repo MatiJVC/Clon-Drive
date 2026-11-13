@@ -33,9 +33,10 @@ export class StorageService {
     );
   }
 
-  get(key: string) {
+  // range opcional con el formato HTTP "bytes=inicio-fin" (para video y audio)
+  get(key: string, range?: string) {
     return this.s3.send(
-      new GetObjectCommand({ Bucket: this.cfg.bucketName, Key: key }),
+      new GetObjectCommand({ Bucket: this.cfg.bucketName, Key: key, Range: range }),
     );
   }
 
